@@ -1,0 +1,9 @@
+config.reload.automatic: true
+http.host: 0.0.0.0
+log.level: info
+path.logs: /usr/share/logstash/logs
+xpack.monitoring.elasticsearch.hosts:
+- http://elasticsearch:9200
+xpack.monitoring.elasticsearch.password: changeme
+xpack.monitoring.elasticsearch.username: elastic
+xpack.monitoring.enabled: true

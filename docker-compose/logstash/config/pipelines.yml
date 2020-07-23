@@ -1,0 +1,18 @@
+# This file is where you define your pipelines. You can define multiple.
+# For more information on multiple pipelines, see the documentation:
+#   https://www.elastic.co/guide/en/logstash/current/multiple-pipelines.html
+
+- pipeline.id: main
+  path.config: "/usr/share/logstash/pipeline/logstash.conf"
+
+- pipeline.id: f100_fault_raw
+  path.config: "/usr/share/logstash/pipeline/f100_fault_raw.conf"
+
+- pipeline.id: f100_perf_raw
+  path.config: "/usr/share/logstash/pipeline/f100_perf_raw.conf"
+
+- pipeline.id: f110_fault_raw
+  path.config: "/usr/share/logstash/pipeline/f110_fault_raw.conf"
+
+- pipeline.id: f110_perf_raw
+  path.config: "/usr/share/logstash/pipeline/f110_perf_raw.conf"

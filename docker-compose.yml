@@ -1,0 +1,99 @@
+version: '3.2'
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION}
+    container_name: dspc-elasticsearch
+    hostname: elasticsearch
+    volumes:
+      - type: bind
+        source: ./docker-compose/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - type: volume
+        source: elasticsearch
+        target: /usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      ES_JAVA_OPTS: "-Xmx1g -Xms1g"
+      ELASTIC_PASSWORD: changeme
+    networks:
+      - elk
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:${ELK_VERSION}
+    container_name: dspc-logstash
+    hostname: logstash
+    volumes:
+      - type: bind
+        source: ./docker-compose/logstash/config
+        target: /usr/share/logstash/config
+      - type: bind
+        source: ./docker-compose/drop
+        target: /usr/share/logstash/drop
+    ports:
+      - "5000:5000"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx4096m -Xms1024m"
+      CONFIG_RELOAD_AUTOMATIC: "true"
+      PATH_LOGS: "/usr/share/logstash/logs"
+      PIPELINE_SEPARATE_LOGS: "true"
+      LOG_LEVEL: "info"
+      
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELK_VERSION}
+    container_name: dspc-kibana
+    hostname: kibana
+    volumes:
+      - type: bind
+        source: ./docker-compose/config/kibana.yml
+        target: /usr/share/kibana/config/kibana.yml
+        read_only: true
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  nginx:
+    image: nginx:1.15-alpine
+    container_name: dspc-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+        - elk
+    volumes:
+      - ./docker-compose/nginx/conf.d:/etc/nginx/conf.d
+    restart: unless-stopped
+
+  zeppelin:
+    #image: incadencecorp/zeppelin-server:0.9.0-SNAPSHOT
+    image: docker-dspc.di2e.net/zeppelin-server:0.9.0-SNAPSHOT
+    container_name: dspc-zeppelin
+    volumes:
+      - type: bind
+        source: ./docker-compose/zeppelin/conf
+        target: /zeppelin/conf
+      - type: bind
+        source: ./docker-compose/zeppelin/notebook
+        target: /zeppelin/notebook
+    ports:
+      - "8080:8080"
+    networks:
+        - elk
+
+networks:
+  elk:
+    driver: bridge
+
+volumes:
+  elasticsearch:
