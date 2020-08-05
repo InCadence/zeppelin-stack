@@ -18,7 +18,7 @@ def prepare_config_indexname_url():                                             
     data_url = possible_url if possible_url else data_url  
 
     possible_mapping = input(
-        'If you would like to use a custom index mapping, please specify the text/json file to pull the mapping from. Otherwise, default URL will be used:')
+        'If you would like to use a custom index mapping, please specify the text/json file to pull the mapping from. Otherwise, default file will be used:')
     mappingFile = possible_mapping if possible_mapping else mappingFile
 
     possible_name = input('Please type an all lowercase name for the power line data index. Defaults to "powerline":')
