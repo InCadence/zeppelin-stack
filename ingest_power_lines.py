@@ -46,11 +46,11 @@ def prepare_elasticsearch():
     return es
 
 
-def get_data():
+def get_pline_data():
    return geojson.loads(requests.get(data_url, allow_redirects=True).content)["features"]       # gets data from url, then converts the geojson file into a dictionary 
                                                                                                 # of all the powerlines, then returns said dictionary
 
-def index_data(line_data_list, es):
+def index_pline_data(line_data_list, es):
    bulk_lines_list = ({
         '_index': index_name,
         '_ID': line['ID'],                                                                      # id is the ID of the power line, unique to each power line
@@ -61,10 +61,10 @@ def index_data(line_data_list, es):
 
 prepare_config_indexname_url()
 elastic = prepare_elasticsearch()                                                               # runs everything
-loaded_data = get_data()
+loaded_data = get_pline_data()
 print('retrieved and loaded')
 processed_data = process_lines(loaded_data)
-index_data(processed_data, elastic)
+index_pline_data(processed_data, elastic)
 print('indexed')
 
 
