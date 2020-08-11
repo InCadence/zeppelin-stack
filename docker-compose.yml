@@ -1,5 +1,37 @@
 version: '3.2'
 services:
+  db:
+    image: kartoza/postgis:10.0-2.4
+    container_name: dspc-postgres
+    hostname: postgis
+    volumes:
+      - db-backups:/backups
+    ports:
+      - "25432:5432"
+    networks:
+      - elk
+    environment:
+      - USERNAME=docker
+      - PASS=docker
+      - ALLOW_IP_RANGE=172.20.0.0/24
+    restart: unless-stopped
+  geoserver:
+    image: incadencecorp/geoserver:0.0.1-SNAPSHOT
+    container_name: dspc-geoserver
+    hostname: geoserver
+    volumes:
+      - type: bind
+        source: ./docker-compose/geoserver
+        target: /opt/geoserver/data_dir
+    ports:
+      - "8181:8080"
+    networks:
+      - elk
+    links:
+      - db:db
+    restart: unless-stopped
+    user: root
+        
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ELK_VERSION}
     container_name: dspc-elasticsearch
@@ -97,3 +129,4 @@ networks:
 
 volumes:
   elasticsearch:
+  db-backups:
