@@ -1,0 +1,24 @@
+{
+        "mappings": {
+            "properties": {
+
+                "distance": {"type": "float"},
+
+                "line_id": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "plant_id": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }}
+
+
+            }
+        }
+    }
