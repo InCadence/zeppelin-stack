@@ -1,0 +1,93 @@
+{
+        "mappings": {
+            "properties": {
+
+                "shape": {"type": "geo_shape"},
+
+                "OBJECTID": {"type": "integer"},
+
+                "ID": {"type": "integer"},
+
+                "TYPE": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "STATUS": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "NAICS_CODE": {"type": "integer"},
+
+                "NAICS_DESC": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "SOURCE": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "SOURCEDATE": {"type": "date", "format": "MM/dd/yyyy HH:mm:ss||yyyy/MM/dd HH:mm:ss"},
+
+                "VAL_METHOD": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "VAL_DATE": {"type": "date", "format": "MM/dd/yyyy HH:mm:ss||yyyy/MM/dd HH:mm:ss"},
+
+                "OWNER": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "VOLTAGE": {"type": "float"},
+
+                "VOLT_CLASS": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "INFERRED": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "SUB_1": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "SUB_2": {"type": "text", "fields": {
+                    "keyword": {
+                        "type": "keyword",
+                        "ignore_above": 256
+                    }
+                }},
+
+                "SHAPE_Length": {"type": "float"}
+
+            }
+        }
+    }
