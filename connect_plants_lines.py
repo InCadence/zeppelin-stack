@@ -71,8 +71,7 @@ def prepare_elasticsearch():
 
 def calc_distance(long1, lat1, long2,
                   lat2):  # calculates distance between two lat/long points using the Haversine formula
-    radius = 6371 * (10 ** 3)  # radius of the earth in meters
-
+    
     lat1_radians = lat1 * pi / 180
 
     lat2_radians = lat2 * pi / 180
