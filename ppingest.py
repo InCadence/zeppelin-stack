@@ -5,9 +5,54 @@ import io
 import sys
 import csv
 import os
+import pandas as pd
 from geojson.geometry import Point
 from elasticsearch import helpers, Elasticsearch
 from elasticsearch.connection import create_ssl_context           #imports
+
+
+def SaveElasticData(toIndex, df, chunksize=500):
+   """
+   Utility function to save a dataframe to an Elasticsearch index.  The function will
+   attempt to create the index if it does not exist.  An index template should already
+   exist that maps the index name to the appropriate mapping.
+
+   Parameters:
+       toIndex (String): The name of the Elasticsearch index to which to write the dataframe.
+       df (pd.dataframe): Pandas dataframe to save to Elasticsearch.
+   """
+   from elasticsearch import Elasticsearch
+   from elasticsearch import helpers
+   import time
+   # TODO:  The function should return a status
+   # TODO:  Add a parameter to specify the mapping to use in creating the index.
+   start_time = time.time()
+   #es = Elasticsearch(['http://elastic:changeme@elk.afpefp.incadencecorp.com:9200/'],
+   #                   requestTimeout='Infinity')
+   # es = Elasticsearch([{'host':'elk.afpefp.incadencecorp.com', 'user': 'elastic',
+   #        'pwd': 'changeme','requestTimeout': 'Infinity'}])
+   es = Elasticsearch([{'host': 'localhost', 'port': 9200}],
+                 http_auth=('elastic', 'changeme'))  # initializes elasticsearch with authentication
+   # Note this assumes an index template with the mappings has been created
+   if es.indices.exists(toIndex):
+      print("Index %s Exists" % (toIndex))
+   else:
+      print("Creating Index %s" % (toIndex))
+      res = es.indices.create(index=toIndex, ignore=[400, 404], request_timeout=30)
+
+   # Internal helper function used the the Elasticsearch bulk save
+   def merged_doc_generator(df):
+      df_iter = df.iterrows()
+      for index, document in df_iter:
+         yield {
+            "_index": toIndex,
+            "_type": "_doc",
+            "_source": document.dropna().to_dict(),
+         }
+
+   helpers.bulk(es, merged_doc_generator(df), chunk_size=chunksize)
+   # print the elapsed time
+   print("TOTAL TIME:", time.time() - start_time, "seconds.")
 
 path = os.path.realpath(__file__)
 path = path[:len(path)-path[::-1].index('\\')]     #saves the data to the same file as this script
@@ -29,7 +74,7 @@ def makePoint(lat, long):     #creates a point in longitude-latitude array forma
    point = [long,lat]
    return point
 
-file = '/powerplantdata/powerPlants/global_power_plant_database.csv'          #path to data file
+file = 'powerplantdata/powerPlants/global_power_plant_database.csv'          #path to data file
 with open(file,'r', encoding='utf-8') as newFile:               
    newCSV = csv.reader(newFile,delimiter=',')                           #read the CSV
    
@@ -89,8 +134,8 @@ es = Elasticsearch([{'host': 'localhost', 'port': 9200}],http_auth=('elastic','c
 if not es.indices.exists(index=name):                #creates the index if it doesn't exist yet
   es.indices.create(index=name,body=mapping)
  
+SaveElasticData(name,pd.DataFrame(allStations))
 
-
-for i in range(len(allStations)):                  #add data to index
-   es.index(index=name, id=i, body=allStations[i])
+#for i in range(len(allStations)):                  #add data to index
+#   es.index(index=name, id=i, body=allStations[i])
    
