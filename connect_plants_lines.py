@@ -1,13 +1,13 @@
-import geojson
-import requests
 import json
 from math import pi, sin, cos, asin, sqrt
 from elasticsearch import Elasticsearch,helpers  # imports
 
-DISTANCES = []
+CONNECTIONS_TUPLE = tuple()         #tuple that will be used in the helpers.bulk method
+RADIUS = 6378135  # radius of the earth in meters, from NOAA: https://www.ngs.noaa.gov/PUBS_LIB/Geodesy4Layman/TR80003E.HTM
+DIGITS = {*'1234567890'}
 
 plants_index = 'powerplants'
-data_url = 'https://opendata.arcgis.com/datasets/70512b03fe994c6393107cc9946e5c22_0.geojson'
+lines_index = 'powerlines'
 host = 'localhost'
 port = 9200
 elastic_pass = 'changeme'
@@ -16,6 +16,43 @@ connections_index_name = 'lineplantconnections'
 mappingFile = 'connections_mapping'
 
 
+def is_number(test):  # tests if a string is an whole number
+    global DIGITS
+    for char in str(test):
+        if char not in DIGITS:
+            return False
+    return True
+
+
+def prepare_variables():
+    global mappingFile, plants_index, lines_index, connections_index_name, host, port, elastic_pass, elastic_uname
+
+    possible_mapping = input(
+        'If you would like to use a custom index mapping, please specify the text/json file to pull the mapping from. Otherwise, default file will be used:')
+    mappingFile = possible_mapping if possible_mapping else mappingFile
+
+    possible_name = input('Please type the name of the power line data index (defaults to "powerlines"):')
+    lines_index = possible_name if possible_name else lines_index
+
+    possible_name = input('Please type the name of the power plant data index (defaults to "powerplants"):')
+    plants_index = possible_name if possible_name else plants_index
+
+    possible_name = input(
+        'Please type an all lowercase name for the connection data index (defaults to "lineplantconnections"):')
+    connections_index_name = possible_name if possible_name else connections_index_name
+
+    possible_host = input('Please type the host for elasticsearch (defaults to "localhost"):')
+    host = possible_host if possible_host else host
+
+    possible_port = input('Please type the port for elasticsearch (defaults to 9200):')
+    port = possible_port if (possible_port and is_number(possible_port)) else port
+
+    possible_pass = input('Please enter the password for elasticsearch (defaults to "elastic"):')
+    elastic_pass = possible_pass if possible_pass else elastic_pass
+
+    possible_uname = input('Please enter the password for elasticsearch (defaults to "changeme"):')
+    elastic_uname = possible_uname if possible_uname else elastic_uname
+  
 def create_connection():
     elastic = Elasticsearch([{'host': host, 'port': port}],
                             http_auth=(elastic_uname,
@@ -25,9 +62,9 @@ def create_connection():
 
 
 def prepare_elasticsearch():
-    mapping = json.loads(open(mappingFile).read())  # pulls mapping from a file
     esearch = create_connection()
     if not esearch.indices.exists(index=connections_index_name):  # creates the index if it doesn't exist yet
+        mapping = json.loads(open(mappingFile).read())  # pulls mapping from a file
         esearch.indices.create(index=connections_index_name, body=mapping)
     return esearch
 
@@ -45,21 +82,35 @@ def calc_distance(long1, lat1, long2,
     long_difference = (long2 - long1) * pi / 180
 
     first_part = sin(lat_difference / 2) ** 2 + cos(lat1_radians) * cos(lat2_radians) * sin(long_difference / 2) ** 2
-    distance = 2 * radius * asin(sqrt(first_part))
+    distance = 2 * RADIUS * asin(sqrt(first_part))
     return distance  # distance is in meters
 
 
-def get_pline_data():
-    print('starting load')
-    return geojson.loads(requests.get(data_url, allow_redirects=True).content)[
-        "features"]  # gets data from url, then converts the geojson file into a dictionary of all the powerlines,
-    # then returns said dictionary
+def get_pline_data(elastic):  # gets power line data from elasticsearch, using scroll to get all power lines
+    all_power_lines = []
+    resp = elastic.search(index=lines_index, body={"size": 10000, "query": {"match_all": {}}}, scroll='30s')
+    all_power_lines += resp['hits']['hits']
+
+    old_scroll_id = resp['_scroll_id']
+    while len(resp['hits']['hits']):
+        resp = elastic.scroll(
+            scroll_id=old_scroll_id,
+            scroll='30s'
+        )
+
+        all_power_lines += resp['hits']['hits']  #adds all power lines to the same list
+
+        if old_scroll_id != resp['_scroll_id']:
+            print("NEW SCROLL ID:", resp['_scroll_id'])
+        old_scroll_id = resp['_scroll_id']
+
+    return all_power_lines
 
 
-def process_lines(feature_list):  # processes dictionary of power lines
+def process_lines(feature_list):  # processes list of power lines
     processed = {}
     for feature in feature_list:
-        geometry = feature['geometry']['coordinates']
+        geometry = feature['_source']['shape']['coordinates']
         if len(geometry) > 1:
             if geometry[0][0] == geometry[1][0]:
                 geometry = [geometry[1][::-1] + geometry[0]] + geometry[
@@ -71,13 +122,13 @@ def process_lines(feature_list):  # processes dictionary of power lines
             elif geometry[0][-1] == geometry[1][-1]:
                 geometry = [geometry[0] + geometry[1][::-1]] + geometry[2:]
 
-        info = feature['properties']
-        processed[info['ID']] = [geometry[-1][-1], geometry[0][0]]  # adds new power line to list of processed objects
+        feature_id = feature['_source']['ID']
+        processed[feature_id] = [geometry[-1][-1], geometry[0][0]]  # adds new power line to list of processed objects
     return processed
 
 
 def find_matching_plants(point, line_id, es):             # matches power plants and lines
-    global DISTANCES
+    global CONNECTIONS_TUPLE
     results = es.search(index="powerplants", body={"query": {
         "bool": {
             "must": {
@@ -94,10 +145,13 @@ def find_matching_plants(point, line_id, es):             # matches power plants
     }})
 
     if len(results['hits']['hits']):
-        plant_id = results['hits']['hits'][0]['_source']['gppd_idnr']
-        plant_location = results['hits']['hits'][0]['_source']['location']
+        plant_info = results['hits']['hits'][0]['_source']['_doc_source']
+        plant_id = plant_info['gppd_idnr']
+        plant_location = plant_info['location']
         distance1 = calc_distance(plant_location[0], plant_location[1], point[0], point[1])
-        DISTANCES.append({'line_id': line_id, 'plant_id': plant_id, 'distance': distance1})   #global distances dictionary
+        CONNECTIONS_TUPLE = CONNECTIONS_TUPLE + tuple([{'_index': connections_index_name, '_ID': len(CONNECTIONS_TUPLE),
+                                                      '_source': {'line_id': line_id, 'plant_id': plant_id,
+                                                                  'distance': distance1}}])        
         return (plant_id, plant_location)
 
 
@@ -113,17 +167,10 @@ def make_line_plant_connections(power_line_data, elastic_search):
 
     return connections
 
-
-loaded_data = get_pline_data()
+prepare_variables()
 elastic_connection = prepare_elasticsearch()
-print('retrieved and loaded')
+loaded_data = get_pline_data(elastic_connection)
 processed_data = process_lines(loaded_data)
 connections_dictionary = make_line_plant_connections(processed_data, elastic_connection)
 
-bulk_connections_list = ({
-    '_index': connections_index_name,
-    '_ID': position,
-    '_source': connection} for position, connection in enumerate(DISTANCES)
-)
-
-helpers.bulk(elastic_connection,bulk_connections_list)
+helpers.bulk(elastic_connection, CONNECTIONS_TUPLE)
