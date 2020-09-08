@@ -2,7 +2,7 @@ import json
 from math import pi, sin, cos, asin, sqrt
 from elasticsearch import Elasticsearch,helpers  # imports
 
-CONNECTIONS_TUPLE = tuple()         #tuple that will be used in the helpers.bulk method
+DISTANCES_TUPLE = tuple()         #tuple that will be used in the helpers.bulk method
 RADIUS = 6378135  # radius of the earth in meters, from NOAA: https://www.ngs.noaa.gov/PUBS_LIB/Geodesy4Layman/TR80003E.HTM
 DIGITS = {*'1234567890'}
 
@@ -12,7 +12,7 @@ host = 'localhost'
 port = 9200
 elastic_pass = 'changeme'
 elastic_uname = 'elastic'
-connections_index_name = 'lineplantconnections'
+connections_index_name = 'lineplantdistances'
 mappingFile = 'connections_mapping'
 
 
@@ -38,7 +38,7 @@ def prepare_variables():
     plants_index = possible_name if possible_name else plants_index
 
     possible_name = input(
-        'Please type an all lowercase name for the connection data index (defaults to "lineplantconnections"):')
+        'Please type an all lowercase name for the connection data index (defaults to "lineplantdistances"):')
     connections_index_name = possible_name if possible_name else connections_index_name
 
     possible_host = input('Please type the host for elasticsearch (defaults to "localhost"):')
@@ -127,7 +127,7 @@ def process_lines(feature_list):  # processes list of power lines
 
 
 def find_matching_plants(point, line_id, es):             # matches power plants and lines
-    global CONNECTIONS_TUPLE
+    global DISTANCES_TUPLE
     results = es.search(index="powerplants", body={"query": {
         "bool": {
             "must": {
@@ -148,7 +148,7 @@ def find_matching_plants(point, line_id, es):             # matches power plants
         plant_id = plant_info['gppd_idnr']
         plant_location = plant_info['location']
         distance1 = calc_distance(plant_location[0], plant_location[1], point[0], point[1])
-        CONNECTIONS_TUPLE = CONNECTIONS_TUPLE + tuple([{'_index': connections_index_name, '_ID': len(CONNECTIONS_TUPLE),
+        DISTANCES_TUPLE = DISTANCES_TUPLE + tuple([{'_index': connections_index_name, '_ID': len(DISTANCES_TUPLE),
                                                       '_source': {'line_id': line_id, 'plant_id': plant_id,
                                                                   'distance': distance1}}])        
         return (plant_id, plant_location)
@@ -172,4 +172,4 @@ loaded_data = get_pline_data(elastic_connection)
 processed_data = process_lines(loaded_data)
 connections_dictionary = make_line_plant_connections(processed_data, elastic_connection)
 
-helpers.bulk(elastic_connection, CONNECTIONS_TUPLE)
+helpers.bulk(elastic_connection, DISTANCES_TUPLE)
