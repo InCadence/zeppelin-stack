@@ -144,7 +144,7 @@ def find_matching_plants(point, line_id, es):             # matches power plants
     }})
 
     if len(results['hits']['hits']):
-        plant_info = results['hits']['hits'][0]['_source']['_doc_source']
+        plant_info = results['hits']['hits'][0]['_source']
         plant_id = plant_info['gppd_idnr']
         plant_location = plant_info['location']
         distance1 = calc_distance(plant_location[0], plant_location[1], point[0], point[1])
