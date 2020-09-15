@@ -159,7 +159,7 @@ def make_line_plant_connections(power_line_data, elastic_search):
 
     for id in power_line_data:
         start_of_pline = power_line_data[id][0]
-        end_of_pline = power_line_data[id][0]
+        end_of_pline = power_line_data[id][-1]
         connections[id] = {}
         connections[id]['first'] = find_matching_plants(start_of_pline, id, elastic_search)
         connections[id]['second'] = find_matching_plants(end_of_pline, id, elastic_search)
