@@ -231,7 +231,6 @@ def process_connections():
 prepare_variables()
 elastic_connection = prepare_elasticsearch()
 loaded_data = get_pline_data(elastic_connection)
-print('retrieved and loaded')
 processed_data = process_lines(loaded_data)
 connections_dictionary = make_line_connections(processed_data, elastic_connection)
 process_connections()
