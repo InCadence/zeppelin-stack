@@ -1,0 +1,10 @@
+{
+        "mappings": {
+            "properties": {
+
+                "point_of_intersection": {"type": "geo_point"}
+
+
+            }
+        }
+    }
